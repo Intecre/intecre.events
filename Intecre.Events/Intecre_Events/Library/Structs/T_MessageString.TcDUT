@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="T_MessageString" Id="{8567c649-5f89-002c-35bf-f268cf8d9e87}">
+    <Declaration><![CDATA[TYPE T_MessageString : STRING(EventsConfig.MAX_LOG_MESSAGE_SIZE); END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="ST_EventMessageBuffer" Id="{c975afca-a43d-0e8e-21d6-bb4bea918eea}">
+    <Declaration><![CDATA[{attribute 'pack_mode' := '0'}
+TYPE ST_EventMessageBuffer :
+STRUCT
+ 	bufferIndex : UINT := 0;
+	availableForWriting : BOOL := TRUE;
+  count : UINT := 0;
+  timestampMs : ULINT;
+  
+  bufferSize : UDINT := EventsConfig.MAX_BUFFER_SIZE;
+  dataSize : UDINT := 0;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

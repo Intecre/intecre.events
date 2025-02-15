@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_EventLogger" Id="{12a4ab34-74d5-03e0-22f3-e2ebffe35f3a}">
+    <Declaration><![CDATA[// Internal interface for general logging methods required by all loggers.
+INTERFACE INTERNAL I_EventLogger
+]]></Declaration>
+    <Method Name="LogEvent" Id="{b750cbff-d47d-01e9-18ec-106b325e936b}">
+      <Declaration><![CDATA[// Generic logging method.
+METHOD INTERNAL LogEvent
+VAR_IN_OUT CONSTANT
+  message : T_MessageString; 
+  sourceInstanceName : T_MaxString;
+END_VAR
+
+VAR_INPUT
+  severity : TcEventSeverity;
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="ShouldLogEvent" Id="{5c6495ee-7c92-0fe4-127b-bf3afbcf63a9}">
+      <Declaration><![CDATA[// Checks severity filters for whether the log message/ event should be logged.
+METHOD INTERNAL ShouldLogEvent : BOOL
+VAR_INPUT
+  severity : TcEventSeverity;
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="F_GetLogSeverityFromTcEventSeverity" Id="{82b7a67f-d6f1-0024-1b20-fa8788eec8cb}" SpecialFunc="None">
+    <Declaration><![CDATA[// Conversion helper to convert from TcEventSeverity to Intecre.Utilities E_LogSeverity.
+FUNCTION INTERNAL F_GetLogSeverityFromTcEventSeverity : E_LogSeverity
+VAR_INPUT
+  severity : TcEventSeverity;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE severity OF
+
+  TcEventSeverity.Verbose   : F_GetLogSeverityFromTcEventSeverity := E_LogSeverity.Debug;
+  TcEventSeverity.Info      : F_GetLogSeverityFromTcEventSeverity := E_Logseverity.Info;
+  TcEventSeverity.Warning   : F_GetLogSeverityFromTcEventSeverity := E_Logseverity.Warning;
+  TcEventSeverity.Error     : F_GetLogSeverityFromTcEventSeverity := E_Logseverity.Error;
+  TcEventSeverity.Critical  : F_GetLogSeverityFromTcEventSeverity := E_Logseverity.Error;
+
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

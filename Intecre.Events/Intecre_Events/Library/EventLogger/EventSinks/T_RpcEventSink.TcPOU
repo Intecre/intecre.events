@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="T_RpcEventSink" Id="{04b4daa9-120b-4d19-ab06-d02831d714af}" SpecialFunc="None">
+    <Declaration><![CDATA[// Event sink which buffers log messages/ events ready for polling via RPC calls to 'GetEvents'; a method of the I_EventSink interface. 
+FUNCTION_BLOCK PUBLIC T_RpcEventSink EXTENDS T_InstanceNameBase IMPLEMENTS I_EventSink
+VAR
+  jsonBuffer : T_JsonEventBuffer;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="I_EventSink" Id="{3de76996-81c9-4ee8-be88-069c05bc25ed}" />
+    <Method Name="AddEvent" Id="{c9ed49a3-890d-41b4-9100-1d7199a21736}" FolderPath="I_EventSink\">
+      <Declaration><![CDATA[// Adds an event to the sink for processing.
+METHOD PUBLIC AddEvent
+VAR_INPUT
+  eventMessageParams : ST_EventMessageParams;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[jsonBuffer.AddEvent(eventMessageParams);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetEvents" Id="{812df854-5d18-4b2b-8555-f5841ec3f111}" FolderPath="I_EventSink\">
+      <Declaration><![CDATA[// Gets events currently stored in the buffer and copies them to the resultString.
+{attribute 'TcRpcEnable'}
+METHOD PUBLIC GetEvents : T_BufferString;
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[jsonBuffer.GetEvents(GetEvents);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Initialise" Id="{375315bd-3077-45b1-b316-ef7c63b93faa}" FolderPath="I_EventSink\">
+      <Declaration><![CDATA[// Initialises the buffer including an I_TimeProvider for timestamping buffers and events.
+METHOD PUBLIC Initialise
+VAR_INPUT
+	timeProvider : I_TimeProvider;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[jsonBuffer.Initialise(timeProvider);]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

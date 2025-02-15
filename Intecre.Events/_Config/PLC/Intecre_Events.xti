@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.54" ClassName="CNestedPlcProjDef">
+	<Project GUID="{14041C4F-B9FE-48FA-8E51-8F4DB86C5B09}" Name="Intecre_Events" PrjFilePath="..\..\Intecre_Events\Intecre_Events.plcproj" TmcFilePath="..\..\Intecre_Events\Intecre_Events.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
+		<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="Intecre_Events\Intecre_Events.tmc" TmcHash="{1D32948D-F9DA-135A-2C91-E0EBBEBA160A}">
+			<Name>Intecre_Events Instance</Name>
+			<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
+			<Contexts>
+				<Context>
+					<Id>1</Id>
+					<Name>Default</Name>
+				</Context>
+			</Contexts>
+		</Instance>
+	</Project>
+</TcSmItem>

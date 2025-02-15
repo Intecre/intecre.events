@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_EventSinkHandler" Id="{30e16354-b47a-01f8-3e7a-48391616368a}">
+    <Declaration><![CDATA[// Interface for handling sinks. Allows adding/ clearing sinks to be processed.
+INTERFACE I_EventSinkHandler
+]]></Declaration>
+    <Method Name="AddSink" Id="{f3450a45-5d1e-03e8-27c8-8181fc940e15}">
+      <Declaration><![CDATA[// Adds a sink to the sink handler and returns TRUE if successful.
+METHOD AddSink : BOOL
+VAR_INPUT	
+  sink : I_EventSink;
+END_VAR
+]]></Declaration>
+    </Method>
+    <Method Name="ClearSinks" Id="{f46f0473-cdc1-02d9-283d-a74fccc69727}">
+      <Declaration><![CDATA[// Clears all sinks currently being handled by the sink handler.
+METHOD ClearSinks
+
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

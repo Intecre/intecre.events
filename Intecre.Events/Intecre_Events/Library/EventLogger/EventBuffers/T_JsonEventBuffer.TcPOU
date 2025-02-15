@@ -1,0 +1,403 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="T_JsonEventBuffer" Id="{83afa1f7-32b2-0671-0a3a-060284cecda6}" SpecialFunc="None">
+    <Declaration><![CDATA[// Event sink which buffers log messages/ events ready for polling via RPC calls to 'GetEvents'; a method of the I_EventSink interface. 
+FUNCTION_BLOCK PUBLIC T_JsonEventBuffer EXTENDS T_InstanceNameBase IMPLEMENTS I_EventBuffer
+VAR
+  isInitialised : BOOL := FALSE;
+  
+  bufferPool : ST_EventMessageBufferPool;
+  jWriters : ARRAY [1..EventsConfig.MAX_BUFFERS] OF FB_JsonSaxWriter;
+
+  _timeProvider : I_TimeProvider := NULL;
+  eventId : ULINT := 0;
+END_VAR
+
+VAR CONSTANT
+  NULL : UDINT := 0;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="Buffer" Id="{3f81bc46-d1a8-042c-3167-05e3f75b8acd}" />
+    <Folder Name="I_EventBuffer" Id="{96101ce1-ca47-008f-3d68-06bff11c710a}" />
+    <Folder Name="Json" Id="{a8b82b01-6e66-0a7c-1517-27dadbffd9f2}" />
+    <Method Name="AddEvent" Id="{c02a1a8f-e369-0458-00ac-66a5384ad5c8}" FolderPath="I_EventBuffer\">
+      <Declaration><![CDATA[// Adds an event to the buffer for later processing.
+METHOD PUBLIC AddEvent
+VAR_INPUT
+  eventMessageParams : ST_EventMessageParams;
+END_VAR
+
+VAR
+  totalSize, messageSize : UDINT := 0;
+  buffer : REFERENCE TO ST_EventMessageBuffer := 0;
+END_VAR
+
+VAR_INST
+  jWriterLocal : FB_JsonSaxWriter; // For calculating message size.
+END_VAR
+
+VAR CONSTANT
+  END_JSON_ARRAY_SIZE : UINT := 3; // End array, end object and null terminator.
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to AddEvent. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+jWriterLocal.ResetDocument();
+messageSize := ConvertToJson(eventMessageParams, jWriter := jWriterLocal);
+
+IF bufferPool.currentDataBufferIndex = 0 OR bufferPool.currentDataBufferIndex > EventsConfig.MAX_BUFFERS THEN // Try to find an empty buffer.
+	bufferPool.currentDataBufferIndex := FindAvailableBuffer();
+  ResetBuffer(bufferPool.currentDataBufferIndex);
+END_IF
+
+IF bufferPool.currentDataBufferIndex > 0 AND bufferPool.currentDataBufferIndex <= EventsConfig.MAX_BUFFERS THEN 
+  buffer REF= bufferPool.dataBuffers[bufferPool.currentDataBufferIndex];
+
+  IF buffer.dataSize + messageSize > (EventsConfig.MAX_BUFFER_SIZE - END_JSON_ARRAY_SIZE) THEN  // Will adding this event cause the buffer to overflow?
+    EndJson(bufferPool.currentDataBufferIndex);
+    buffer.availableForWriting := FALSE; // Available for reading/ sending
+
+	  bufferPool.currentDataBufferIndex := FindAvailableBuffer(); // Next buffer for writing. Will return 0 if no available buffers.
+    ResetBuffer(bufferPool.currentDataBufferIndex);
+  END_IF
+END_IF
+
+IF bufferPool.currentDataBufferIndex > 0 AND bufferPool.currentDataBufferIndex <= EventsConfig.MAX_BUFFERS THEN // Check bounds again due to buffer index change above.
+  buffer REF= bufferPool.dataBuffers[bufferPool.currentDataBufferIndex]; // Buffer index has changed so update the internal ref.
+  IF buffer.availableForWriting THEN
+    ConvertToJson(eventMessageParams, jWriter := jWriters[bufferPool.currentDataBufferIndex]);
+    totalSize := jWriters[bufferPool.currentDataBufferIndex].GetDocumentLength();                 
+    buffer.dataSize := totalSize;
+    buffer.count := buffer.count + 1;
+    eventId := eventId + 1;
+  END_IF
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ConvertToJson" Id="{3d3ce0fe-e18c-0e35-043f-e15a930c18ad}" FolderPath="Json\">
+      <Declaration><![CDATA[// Converts the input eventMessageParams to JSON (without string copying).
+METHOD PRIVATE ConvertToJson
+VAR_INPUT
+  eventMessageParams : ST_EventMessageParams;
+END_VAR
+
+VAR_OUTPUT
+  docSize : UDINT;
+END_VAR
+
+VAR_IN_OUT
+  jWriter : FB_JsonSaxWriter;
+END_VAR
+
+VAR
+  timestampMs : ULINT;
+  severity : T_MaxString;
+END_VAR
+
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to ConvertToJson. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+IF _timeProvider = NULL THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to ConvertToJson. _timeProvider is uninitialised.'));
+  RETURN;
+END_IF
+
+timestampMs := _timeProvider.TimestampMs;
+severity := TO_STRING(eventMessageParams.Severity);
+
+jWriter.StartObject();
+
+  jWriter.AddKey('EventId');
+  jWriter.AddUlint(eventId);
+
+  jWriter.AddKeyString('Severity', severity);
+  jWriter.AddKey('FileTime'); // Add unix timestamp
+  jWriter.AddUlint(timestampMs);
+  jWriter.AddKeyString('SourceName', eventMessageParams.Source); 
+  jWriter.AddKeyString('MessageBody', eventMessageParams.Message);
+  
+jWriter.EndObject();
+
+docSize := jWriter.GetDocumentLength();
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CopyJson" Id="{6bf33615-76fc-06e4-187b-0c101cf2de11}" FolderPath="Json\">
+      <Declaration><![CDATA[// Copies data in the JSON writer and returns the total length of bytes copied.
+METHOD PRIVATE CopyJson : UDINT
+VAR_INPUT
+  iBuffer : UINT := 0;
+  resultString : REFERENCE TO T_BufferString;
+END_VAR
+
+VAR
+  totalSize : UDINT := 0;
+END_VAR
+
+VAR CONSTANT
+  RESULT_STRING_SIZE : UDINT := SIZEOF(resultString);
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to CopyJson. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+IF iBuffer = 0 OR iBuffer > EventsConfig.MAX_BUFFERS THEN
+	RETURN;
+END_IF
+
+MEMSET(ADR(resultString), 0, RESULT_STRING_SIZE); // Copy doc should overwrite resultString including null termination characters. 
+
+totalSize := jWriters[iBuffer].CopyDocument
+             (
+               PDoc := resultString, 
+               nDoc := RESULT_STRING_SIZE
+             );
+             
+bufferPool.dataBuffers[iBuffer].dataSize := totalSize;
+CopyJson := totalSize;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="EndJson" Id="{653e346b-a9be-0175-0f3d-e60daed08021}" FolderPath="Json\">
+      <Declaration><![CDATA[// Ends the JSON string, ready for the JSON string to be copied.
+METHOD PRIVATE EndJson
+VAR_INPUT
+  iBuffer : UINT := 0;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to EndJson. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+IF iBuffer = 0 OR iBuffer > EventsConfig.MAX_BUFFERS THEN
+	RETURN;
+END_IF
+
+jWriters[iBuffer].EndArray();
+jWriters[iBuffer].EndObject();
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FindAvailableBuffer" Id="{5685bed8-c970-0c17-3d66-db370b5d568a}" FolderPath="Buffer\">
+      <Declaration><![CDATA[// Finds the first available buffer, if unable to find one and CYCLE_BUFFERS is set to TRUE, then will search for the first oldest buffer based on its timestamp.
+// With CYCLE_BUFFERS set to FALSE, events will be dropped.
+// Returns the buffer index from the pool, 0 (invalid) if a buffer is not found.
+METHOD PRIVATE FindAvailableBuffer : UINT
+VAR
+  iBuffer : UINT := 0;
+  iAvailable : UINT := 0;
+  iOldest : UINT := 0;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to FindAvailableBuffer. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+iAvailable := 0;
+
+FOR iBuffer := 1 TO EventsConfig.MAX_BUFFERS DO 
+  IF bufferPool.dataBuffers[iBuffer].availableForWriting THEN
+    iAvailable := iBuffer;
+    EXIT;
+	END_IF
+END_FOR
+
+IF EventsConfig.CYCLE_BUFFERS THEN
+  // All buffers are full
+  IF iAvailable = 0 THEN
+    iOldest := FindOldestBuffer(FALSE);
+    IF iOldest > 0 AND iOldest <= EventsConfig.MAX_BUFFERS THEN
+      iAvailable := iOldest;
+    END_IF
+  END_IF
+END_IF
+
+FindAvailableBuffer := iAvailable;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FindOldestBuffer" Id="{04244a6f-e940-039c-30cf-f0f97ae147b8}" FolderPath="Buffer\">
+      <Declaration><![CDATA[// Finds the oldest buffer in the pool and returns its buffer index. Will return 0 if unable to find an old buffer.
+// If checkHasItems is set to TRUE, then will only search for buffers with items, otherwise all buffers in the pool are considered.
+METHOD PRIVATE FindOldestBuffer : UINT
+VAR_INPUT
+  checkHasItems : BOOL := FALSE;
+END_VAR
+
+VAR
+  iBuffer : UINT := 0;
+  iOldest : UINT := 0;
+  timeOldest : ULINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to FindOldestBuffer. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+IF _timeProvider = NULL THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to FindOldestBuffer. _timeProvider is uninitialised.'));
+  RETURN;
+END_IF
+
+timeOldest := _timeProvider.TimestampMs;
+FOR iBuffer := 1 TO EventsConfig.MAX_BUFFERS DO
+  IF bufferPool.dataBuffers[iBuffer].timestampMs < timeOldest THEN
+    IF NOT checkHasItems OR_ELSE bufferPool.dataBuffers[iBuffer].count > 0 THEN
+      timeOldest := bufferPool.dataBuffers[iBuffer].timestampMs;
+      iOldest := iBuffer;
+    END_IF
+  END_IF
+END_FOR
+    
+FindOldestBuffer := iOldest;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetEvents" Id="{41c3da28-70ca-0cfb-1f7a-17e696413e80}" FolderPath="I_EventBuffer\">
+      <Declaration><![CDATA[// Gets events currently stored in the buffer and copies them to the resultString, returning the total length of bytes copied.
+METHOD PUBLIC GetEvents : UDINT
+VAR_INPUT
+  resultString : REFERENCE TO T_BufferString;
+END_VAR
+
+VAR
+  iBuffer : UINT := 0;
+  totalSize : UDINT := 0;
+END_VAR
+
+VAR CONSTANT
+  // Note that the size returned from any 
+  // json writer's GetDocumentLength method 
+  // includes the null terminator, which we want to remove.
+  // This is due to the JSON parsers in .NET or Influx's Telegraf, etc
+  // not being able to understand the null terminator and throwing errors,
+  // e.g. stating that there are additional characters at the end of the JSON payload.
+  REMOVE_NULL_TERMINATOR : UDINT := 1;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to GetEvents. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+iBuffer := FindOldestBuffer(TRUE);
+IF iBuffer > 0 AND iBuffer <= EventsConfig.MAX_BUFFERS THEN
+  IF NOT bufferPool.dataBuffers[iBuffer].availableForWriting THEN
+    IF bufferPool.dataBuffers[iBuffer].count > 0 THEN
+      totalSize := CopyJson(iBuffer, resultString);
+      ResetBuffer(iBuffer);
+    END_IF
+  ELSE // Current buffer
+    IF bufferPool.dataBuffers[iBuffer].count > 0 THEN
+      bufferPool.dataBuffers[iBuffer].availableForWriting := FALSE; // Available for reading/ sending
+      EndJson(iBuffer);
+      totalSize := CopyJson(iBuffer, resultString);
+      ResetBuffer(iBuffer);
+      bufferPool.currentDataBufferIndex := FindAvailableBuffer(); // Next buffer for writing. Will return 0 if no available buffers.
+      ResetBuffer(bufferPool.currentDataBufferIndex);
+    END_IF
+  END_IF
+END_IF
+
+GetEvents := totalSize - REMOVE_NULL_TERMINATOR;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Initialise" Id="{5e745b22-0cd7-0785-2ca9-e7898be330aa}" FolderPath="I_EventBuffer\">
+      <Declaration><![CDATA[// Initialises the buffer including an I_TimeProvider for timestamping buffers and events.
+METHOD PUBLIC Initialise
+VAR_INPUT
+	timeProvider : I_TimeProvider;
+END_VAR
+
+VAR
+  iBuffer : UINT := 0;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_timeProvider := timeProvider;
+
+IF _timeProvider = NULL THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to Initialise. _timeProvider is uninitialised.'));
+  RETURN;
+END_IF
+
+isInitialised := TRUE;
+
+FOR iBuffer := 1 TO EventsConfig.MAX_BUFFERS DO 
+  ResetBuffer(iBuffer);
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ResetBuffer" Id="{f89b2f04-634e-0d33-2083-e90124127252}" FolderPath="Buffer\">
+      <Declaration><![CDATA[// Resets a buffer based on the input buffer index and starts the buffer ready for new events to be added.
+METHOD PRIVATE ResetBuffer
+VAR_INPUT
+  iBuffer : UINT := 0;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to ResetBuffer. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+IF _timeProvider = NULL THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to ResetBuffer. _timeProvider is uninitialised.'));
+  RETURN;
+END_IF
+
+IF iBuffer > 0 AND iBuffer <= EventsConfig.MAX_BUFFERS THEN
+  StartJson(iBuffer);
+  
+  bufferPool.dataBuffers[iBuffer].bufferIndex := iBuffer;
+  bufferPool.dataBuffers[iBuffer].availableForWriting := TRUE;
+  bufferPool.dataBuffers[iBuffer].count := 0;
+  bufferPool.dataBuffers[iBuffer].bufferSize := EventsConfig.MAX_BUFFER_SIZE;
+  bufferPool.dataBuffers[iBuffer].dataSize := 0;
+  
+  bufferPool.dataBuffers[iBuffer].timestampMs := _timeProvider.TimestampMs;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="StartJson" Id="{ef09894e-8da6-0bcf-0ecb-e83b1e964928}" FolderPath="Json\">
+      <Declaration><![CDATA[// Starts the JSON string, for additional JSON objects can be appended.
+METHOD PRIVATE StartJson
+VAR_INPUT
+  iBuffer : UINT := 0;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to StartJson. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+IF iBuffer = 0 OR iBuffer > EventsConfig.MAX_BUFFERS THEN
+	RETURN;
+END_IF
+
+jWriters[iBuffer].ResetDocument();  
+jWriters[iBuffer].StartObject();
+jWriters[iBuffer].AddKey('Logs');
+jWriters[iBuffer].StartArray();]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

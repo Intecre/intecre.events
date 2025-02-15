@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="T_BufferString" Id="{5739d2d2-b16d-0f52-20b7-423b2cbf415f}">
+    <Declaration><![CDATA[TYPE T_BufferString : STRING(EventsConfig.MAX_BUFFER_SIZE); END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="T_InstanceNameBase" Id="{b74b87ab-3edd-0d49-06ea-12f9876971cc}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'reflection'} 
+FUNCTION_BLOCK PUBLIC T_InstanceNameBase
+VAR
+  {attribute 'instance-path'} 
+  {attribute 'noinit'} 
+  name : T_MaxString;
+  
+  _instanceName : T_MaxString;
+  isInstanceNameSet : BOOL := FALSE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="InstanceName" Id="{1ec45583-ccb3-01f2-0d0a-04356f36a10b}">
+      <Declaration><![CDATA[PROPERTY FINAL InstanceName : T_MaxString; // returns the fully scoped variable name]]></Declaration>
+      <Get Name="Get" Id="{0e8c4cf6-5109-0537-1e3d-136fdc1f01c0}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[IF NOT isInstanceNameSet THEN
+   setInstanceName();
+END_IF
+
+InstanceName := _instanceName;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="SetInstanceName" Id="{fe0a3aab-cec0-0aee-38ee-b90839220926}">
+      <Declaration><![CDATA[METHOD PRIVATE SetInstanceName
+VAR
+	charsToDeleteFromPath : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Remove Solution_Name
+charsToDeleteFromPath := FIND(name, '.');
+_instanceName := DELETE(name, charsToDeleteFromPath, 1);
+//Remove ProjectName
+charsToDeleteFromPath := FIND(_instanceName, '.');
+//gives us just "FirstDeclaredPOU.etc.etc..." from above.
+_instanceName := DELETE(_instanceName, charsToDeleteFromPath, 1);]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

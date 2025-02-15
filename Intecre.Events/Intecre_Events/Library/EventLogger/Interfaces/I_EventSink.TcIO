@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_EventSink" Id="{1033ae70-9503-0fb4-2aa1-03886c8ad45a}">
+    <Declaration><![CDATA[// Interface for consuming and exposing event logs for transmitting to an event receiver/ listener.
+INTERFACE I_EventSink
+]]></Declaration>
+    <Method Name="AddEvent" Id="{35ba4693-7c22-0434-113c-ae063a053dce}">
+      <Declaration><![CDATA[// Adds an event to the sink for processing.
+METHOD AddEvent
+VAR_INPUT
+  eventMessageParams : ST_EventMessageParams;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="GetEvents" Id="{f887e3ff-c946-03d3-052b-1a91026d811c}">
+      <Declaration><![CDATA[// Gets events currently stored in the buffer and copies them to the resultString.
+METHOD GetEvents : T_BufferString;]]></Declaration>
+    </Method>
+    <Method Name="Initialise" Id="{2f09428e-ddea-4eb4-bbc8-7a558e0557b9}">
+      <Declaration><![CDATA[// Initialises the sink including an I_TimeProvider for timestamping events.
+METHOD Initialise
+VAR_INPUT
+	timeProvider : I_TimeProvider;
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

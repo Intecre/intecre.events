@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_UnixTimestamp" Id="{1f558f91-4a3c-034c-1188-969b240b15df}" SpecialFunc="None">
+    <Declaration><![CDATA[// Timestamp provider for calculating Unix time. Required to be called in a cyclic manner.
+FUNCTION_BLOCK PUBLIC FB_UnixTimestamp IMPLEMENTS I_TimeProvider
+VAR_OUTPUT
+	milliseconds : ULINT;
+	cpuMicroSeconds : ULINT;
+	systemMicroSeconds : ULINT;
+	dcToTimeZoneMicroSeconds : ULINT;
+END_VAR
+
+VAR
+	localSystemTime : FB_LocalSystemTime := (bEnable := TRUE, dwCycle := 1);
+	getTimeZoneInformation : FB_GetTimeZoneInformation;
+	timeZoneInformation : ST_TimeZoneInformation;
+	specificLocalTimeToFileTime, specificDcToFileTime : FB_TzSpecificLocalTimeToFileTime;
+	fileTime, dcFileTime, dcToFileTime : T_FILETIME;
+	onZerothSecondLastCycle : BOOL;
+	tDcTime : T_DCTIME64;
+
+	cpuHighTime, systemHighTime : UDINT;
+	cpuLowTime, systemLowTime : UDINT;
+	getSystemTime : GETSYSTEMTIME;
+	getCPUCounter : GETCPUCOUNTER;
+	diffBetweenSystemAndDc, prevDiff : ULINT;
+  _timestampMs : ULINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Get local system time
+tDcTime := F_GetCurDcTaskTime64();
+localSystemTime();
+getCPUCounter( cpuCntHiDW => cpuHighTime, cpuCntLoDW => cpuLowTime );
+getSystemTime( timeHiDW => systemHighTime, timeLoDW => systemLowTime );
+
+// On the zeroth second of each minutesync timezone information
+IF (timeZoneInformation.standardName = '' OR (localSystemTime.systemTime.wSecond = 0 AND NOT onZerothSecondLastCycle)) THEN
+	getTimeZoneInformation( sNetID := '', bExecute := TRUE, tzInfo => timeZoneInformation );
+END_IF;
+
+// Convert local system time to unix timestamps
+specificLocalTimeToFileTime(
+		in := Tc2_Utilities.SYSTEMTIME_TO_FILETIME( localSystemTime.systemTime ),
+		tzInfo := timeZoneInformation,
+		out => fileTime
+	);
+
+_timestampMs := milliseconds := (SHL( DWORD_TO_ULINT( fileTime.dwHighDateTime ), 32 ) + DWORD_TO_ULINT( fileTime.dwLowDateTime )) / 10000 - 11644473600000;
+
+onZerothSecondLastCycle := localSystemTime.systemTime.wSecond = 0;
+
+specificDcToFileTime( in := DCTIME64_TO_FILETIME( tDcTime ), tzInfo := timeZoneInformation, out => dcFileTime );
+dcToTimeZoneMicroSeconds :=
+	(SHL( DWORD_TO_ULINT( dcFileTime.dwHighDateTime ), 32 ) + DWORD_TO_ULINT( dcFileTime.dwLowDateTime )) / 10 - 11644473600000000;
+
+cpuMicroSeconds := (SHL( DWORD_TO_ULINT( cpuHighTime ), 32 ) + DWORD_TO_ULINT( cpuLowTime )) / 10 - 11644473600000000;
+systemMicroSeconds := (SHL( DWORD_TO_ULINT( systemHighTime ), 32 ) + DWORD_TO_ULINT( systemLowTime )) / 10 - 11644473600000000;
+
+//diffBetweenSystemAndDc := dcToTimeZoneMilliSeconds - localSysTimeMlSec;
+
+]]></ST>
+    </Implementation>
+    <Property Name="TimestampMs" Id="{f882c985-4503-0e90-3908-a36b9d37b2ea}">
+      <Declaration><![CDATA[PROPERTY TimestampMs : ULINT
+]]></Declaration>
+      <Get Name="Get" Id="{19b6714b-5f18-0140-0da0-972e26f2e85b}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[TimestampMs := milliseconds;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+  </POU>
+</TcPlcObject>

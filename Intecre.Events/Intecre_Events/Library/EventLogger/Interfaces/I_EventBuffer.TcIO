@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_EventBuffer" Id="{835fbbff-e31f-0d0d-2048-19031fa2ca82}">
+    <Declaration><![CDATA[// Interface for buffering event logs.
+INTERFACE I_EventBuffer
+]]></Declaration>
+    <Method Name="AddEvent" Id="{3e1f5f1d-ecc2-0155-1f6b-33e1a07da853}">
+      <Declaration><![CDATA[// Adds an event to the buffer for later processing.
+METHOD AddEvent
+VAR_INPUT
+  eventMessageParams : ST_EventMessageParams;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="GetEvents" Id="{cebe660d-cb53-070d-3911-dfc369b3d43b}">
+      <Declaration><![CDATA[// Gets events currently stored in the buffer and copies them to the resultString, returning the total length of bytes copied.
+METHOD GetEvents : UDINT
+VAR_INPUT
+  resultString : REFERENCE TO T_BufferString;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="Initialise" Id="{cb7b1c7b-b760-0d1a-3174-3e180c6c13fa}">
+      <Declaration><![CDATA[// Initialises the buffer including an I_TimeProvider for timestamping buffers and events.
+METHOD Initialise
+VAR_INPUT
+	timeProvider : I_TimeProvider;
+END_VAR
+]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

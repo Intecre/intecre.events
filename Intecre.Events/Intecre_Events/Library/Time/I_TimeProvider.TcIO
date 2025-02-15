@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_TimeProvider" Id="{eb4530fd-c524-05d3-19c5-8a230be0c1f5}">
+    <Declaration><![CDATA[INTERFACE I_TimeProvider
+]]></Declaration>
+    <Property Name="TimestampMs" Id="{09385750-0c1a-05bc-35ae-8131e2c24181}">
+      <Declaration><![CDATA[PROPERTY TimestampMs : ULINT]]></Declaration>
+      <Get Name="Get" Id="{bc43b595-ae40-0665-31ac-9af7e97594c8}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+  </Itf>
+</TcPlcObject>

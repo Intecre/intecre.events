@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <Itf Name="I_Logger" Id="{cc905d47-10eb-0e51-37da-280142df90f2}">
+    <Declaration><![CDATA[// Interface for logging methods which can be called in user code.
+INTERFACE I_Logger
+]]></Declaration>
+    <Method Name="LogCritical" Id="{c1e8cb14-7a09-0680-2f7e-0bbd0d102f2f}">
+      <Declaration><![CDATA[METHOD LogCritical
+VAR_INPUT
+  message : T_MessageString; 
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="LogError" Id="{1c0fd136-d0b9-02ed-3f94-f5133f04c6e3}">
+      <Declaration><![CDATA[METHOD LogError
+VAR_INPUT
+  message : T_MessageString; 
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="LogInfo" Id="{87c86887-5e85-0549-2419-4a17a416df33}">
+      <Declaration><![CDATA[METHOD LogInfo
+VAR_INPUT
+  message : T_MessageString; 
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="LogVerbose" Id="{e7847836-d92c-064f-0687-2c232ac0e658}">
+      <Declaration><![CDATA[METHOD LogVerbose
+VAR_INPUT
+  message : T_MessageString; 
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="LogWarning" Id="{f4efeaae-1adc-0e37-22b6-ca2ee4018346}">
+      <Declaration><![CDATA[METHOD LogWarning
+VAR_INPUT
+  message : T_MessageString; 
+END_VAR]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="EventsConfig" Id="{ec998127-4484-0b34-3d34-39b49cd07285}" ParameterList="True">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+// Buffer Config
+VAR_GLOBAL CONSTANT
+  MAX_BUFFERS : UINT := 4;                    // Number of buffers.
+  MAX_BUFFER_SIZE : UDINT := 65535;           // Max size in bytes of a buffer.
+  CYCLE_BUFFERS : BOOL := TRUE;               // Overwrite buffers when all buffers are full.
+  MAX_LOG_MESSAGE_SIZE : UINT := 512;         // Max length of log message.
+  
+  CSV_LOG_FILE_NAME : T_MaxString := 'logs';      // Name for CSV log files. Will have the date appended (e.g. logs_2024_05_26).
+  CSV_LOG_FILE_PATH : T_MaxString := '/var/log/'; // The path for log files if using FB_CsvFileEventSink.
+END_VAR
+
+// Logs config
+VAR_GLOBAL CONSTANT
+  MAX_SINKS : UINT := 4; // Number of sinks.
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

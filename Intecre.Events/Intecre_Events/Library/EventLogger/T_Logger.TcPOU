@@ -1,0 +1,187 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="T_Logger" Id="{6cd45fe3-2bfd-0888-0829-0a4ad33070a2}" SpecialFunc="None">
+    <Declaration><![CDATA[// Logger for allowing events of any level to be raised in addition to being able to set/clear a local severity for specific logs.
+FUNCTION_BLOCK PUBLIC T_Logger EXTENDS T_InstanceNameBase IMPLEMENTS I_EventLogger, I_Logger, I_EventSeverityHandler
+VAR CONSTANT
+  NULL : UDINT := 0;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="I_EventLogger" Id="{333d1313-c286-004f-02b2-f9dab5234b78}" />
+    <Folder Name="I_EventSeverityHandler" Id="{d86eba1c-aa50-004f-242f-afc610c580fb}" />
+    <Folder Name="I_Logger" Id="{b1f181b7-4014-0b7f-3f64-742c7e2f2f47}" />
+    <Method Name="ClearLocalSeverity" Id="{b91a6452-55f4-09f6-37cc-919bd576a5a4}" FolderPath="I_EventSeverityHandler\">
+      <Declaration><![CDATA[// Clear the currently set local severity level.
+METHOD PUBLIC ClearLocalSeverity
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Events._eventLogger.ClearLocalSeverity();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{e41792eb-7753-0393-121d-cfca881b6b72}">
+      <Declaration><![CDATA[{attribute 'hide'}
+METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Ensure Intecre_Utilities log level is set to Debug so all logs are processed. 
+// Log filtering is handled via Events.GLOBAL_LOG_SEVERITY and I_Logger -> I_EventSeverityHandler for setting local severity.
+// See events tester.
+Intecre_Utilities.LogConfig.LogLevel := E_LogSeverity.Debug; 
+
+// Set the minimum global logging severity to filter all events.
+SetGlobalSeverity(TcEventSeverity.Verbose);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetGlobalSeverity" Id="{5b615fe3-954a-0f3b-2d1e-9d9c21c90b07}" FolderPath="I_EventSeverityHandler\">
+      <Declaration><![CDATA[// Get global severity level.
+METHOD GetGlobalSeverity : TcEventSeverity]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetGlobalSeverity := Events._eventLogger.GetGlobalSeverity();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetLocalSeverity" Id="{4f9a365e-d126-0cf4-3a7e-3a44f8ff9356}" FolderPath="I_EventSeverityHandler\">
+      <Declaration><![CDATA[// Get local severity level.
+METHOD GetLocalSeverity : TcEventSeverity]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[GetLocalSeverity := Events._eventLogger.GetLocalSeverity();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LogCritical" Id="{ddd8e19e-b96a-02b6-18ea-872d951ca4ed}" FolderPath="I_Logger\">
+      <Declaration><![CDATA[METHOD PUBLIC LogCritical
+VAR_INPUT
+	message	: T_MessageString;
+END_VAR
+
+VAR
+  localInstanceName : T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[localInstanceName := InstanceName;
+LogEvent(message := message, sourceInstanceName := localInstanceName, severity := TcEventSeverity.Critical);;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LogError" Id="{0c03df8d-b094-0236-31db-73644c1d7f02}" FolderPath="I_Logger\">
+      <Declaration><![CDATA[METHOD PUBLIC LogError
+VAR_INPUT
+	message	: T_MessageString;
+END_VAR
+
+VAR
+  localInstanceName : T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[localInstanceName := InstanceName;
+LogEvent(message := message, sourceInstanceName := localInstanceName, severity := TcEventSeverity.Error);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LogEvent" Id="{0f443d0c-7adb-0094-3f23-059e48605fc0}" FolderPath="I_EventLogger\">
+      <Declaration><![CDATA[METHOD INTERNAL LogEvent
+VAR_IN_OUT CONSTANT
+  message : T_MessageString; 
+  sourceInstanceName : T_MaxString;
+END_VAR
+
+VAR_INPUT
+  severity : TcEventSeverity;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Events.EventLogger = NULL THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to LogEvent. Events.EventLogger is null/ uninitialised.'));
+  RETURN;
+END_IF
+
+IF NOT ShouldLogEvent(severity) THEN
+  RETURN;
+END_IF
+
+Events._eventLogger.LogEvent(
+    message:= message, 
+    sourceInstanceName:= sourceInstanceName, 
+    severity:= severity
+  ); 
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LogInfo" Id="{39a1bfd9-68d2-0343-38f1-e4fd24b3e4e4}" FolderPath="I_Logger\">
+      <Declaration><![CDATA[METHOD PUBLIC LogInfo
+VAR_INPUT
+	message	: T_MessageString;
+END_VAR
+
+VAR
+  localInstanceName : T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[localInstanceName := InstanceName;
+LogEvent(message := message, sourceInstanceName := localInstanceName, severity := TcEventSeverity.Info);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LogVerbose" Id="{828bdfc5-6de9-0a8b-19f7-e282d51af829}" FolderPath="I_Logger\">
+      <Declaration><![CDATA[METHOD PUBLIC LogVerbose
+VAR_INPUT
+	message	: T_MessageString;
+END_VAR
+
+VAR
+  localInstanceName : T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[localInstanceName := InstanceName;
+LogEvent(message := message, sourceInstanceName := localInstanceName, severity := TcEventSeverity.Verbose);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LogWarning" Id="{0f1a317c-402c-0c2e-004e-0f4858b8ff8a}" FolderPath="I_Logger\">
+      <Declaration><![CDATA[METHOD PUBLIC LogWarning
+VAR_INPUT
+	message	: T_MessageString;
+END_VAR
+
+VAR
+  localInstanceName : T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[localInstanceName := InstanceName;
+LogEvent(message := message, sourceInstanceName := localInstanceName, severity := TcEventSeverity.Warning);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetGlobalSeverity" Id="{ed95af9d-c640-0a5c-27e2-c9d6aa7a1a6a}" FolderPath="I_EventSeverityHandler\">
+      <Declaration><![CDATA[// Set a global severity level to filter logged events.
+METHOD PUBLIC SetGlobalSeverity
+VAR_INPUT
+	severity	: TcEventSeverity;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Events._eventLogger.SetGlobalSeverity(severity);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetLocalSeverity" Id="{396b1cce-47e7-02a1-33c7-c939dda20588}" FolderPath="I_EventSeverityHandler\">
+      <Declaration><![CDATA[// Set a local severity level to filter logged events. Ensure clear is called once local logging is complete.
+METHOD PUBLIC SetLocalSeverity
+VAR_INPUT
+	severity	: TcEventSeverity;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Events._eventLogger.SetLocalSeverity(severity);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ShouldLogEvent" Id="{58dda101-3ff7-0679-1070-67a2afb85a60}" FolderPath="I_EventLogger\">
+      <Declaration><![CDATA[METHOD INTERNAL ShouldLogEvent : BOOL
+VAR_INPUT
+  severity : TcEventSeverity;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[ShouldLogEvent := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

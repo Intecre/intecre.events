@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="Events" Id="{b2bd9281-d95f-03e8-30a1-06492c1f3198}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+  {attribute 'hide'}
+  {warning disable C0228}
+  _eventLogger  : T_EventLogger;                      // Global instance of event logger which will log to all sinks.
+  {warning restore C0228}
+
+  EventLogger   : I_Logger := _eventLogger;           // Global accessor for logging events.
+  EventSinks    : I_EventSinkHandler := _eventLogger; // Global accessor for adding/ resetting sinks.
+END_VAR
+
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

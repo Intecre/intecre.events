@@ -1,0 +1,119 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_CsvFileEventSink" Id="{dff0b402-1ed4-0275-0376-620fb594e128}" SpecialFunc="None">
+    <Declaration><![CDATA[// Event sink which writes log messages/ events to a CSV file. 
+FUNCTION_BLOCK PUBLIC FB_CsvFileEventSink EXTENDS T_InstanceNameBase IMPLEMENTS I_EventSink
+VAR
+  isInitialised : BOOL := FALSE;
+  
+  csvFileWriter : T_CsvFileWriter;
+  
+  _timeProvider : I_TimeProvider := NULL;
+  
+  // Timeout timer to write messages in the T_CsvFileWriter's buffer after a timeout period.
+  timeoutDuration : TIME := T#2S;         
+  startTimer : BOOL := TRUE;
+  timeoutTrigger : TON := (IN := startTimer, PT := timeoutDuration);
+  
+  task : T_Task;
+  currentDateTime : T_MaxString;
+  eventId : ULINT := 0;
+END_VAR
+
+VAR CONSTANT
+  NULL : UDINT := 0;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="I_EventSink" Id="{693f46f7-e789-0192-18ab-7f99b9dbaec9}" />
+    <Method Name="AddEvent" Id="{c93b3263-65ce-0efc-0fb4-609dd38ba6c5}" FolderPath="I_EventSink\">
+      <Declaration><![CDATA[// Adds an event to the sink for processing.
+METHOD PUBLIC AddEvent
+VAR_INPUT
+  eventMessageParams : ST_EventMessageParams;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to AddEvent. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+IF task.DateString <> currentDateTime THEN
+  currentDateTime := task.DateString;
+  csvFileWriter.SetFileParams(F_Concat3(EventsConfig.CSV_LOG_FILE_PATH, F_Concat3(EventsConfig.CSV_LOG_FILE_NAME, '_', currentDateTime), '.csv'), ASCI_COMMA);
+END_IF
+
+csvFileWriter.AddStringField(TO_STRING(eventId));
+csvFileWriter.AddStringField(TO_STRING(_timeProvider.TimestampMs));
+csvFileWriter.AddStringField(TO_STRING(eventMessageParams.Severity));
+csvFileWriter.AddStringField(eventMessageParams.Source);
+csvFileWriter.AddStringField(eventMessageParams.Message);
+
+// Todo. Additional fields, unix timestamp, event id etc.
+
+csvFileWriter.NewLine();
+eventId := eventId + 1;
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CyclicLogic" Id="{cb61f323-4f0c-01b4-20c8-4fbf445c09f9}">
+      <Declaration><![CDATA[METHOD PUBLIC CyclicLogic
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to Execute. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+csvFileWriter();
+
+timeoutTrigger(IN := startTimer); // Restart timer on next cycle if triggered
+IF timeoutTrigger.Q THEN
+  timeoutTrigger(IN := FALSE);
+  GetEvents();                    // Write data in the buffer.
+END_IF
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetEvents" Id="{926f6495-9c71-0272-24a4-7c5690af834e}" FolderPath="I_EventSink\">
+      <Declaration><![CDATA[// Gets events currently stored in the buffer and copies them to the resultString.
+METHOD PUBLIC GetEvents : T_BufferString;
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT isInitialised THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to GetEvents. Sink is uninitialised.'));
+  RETURN;
+END_IF
+
+csvFileWriter.WriteToFile();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Initialise" Id="{7e98c2a4-41c5-0688-3973-f28722f2cf3e}" FolderPath="I_EventSink\">
+      <Declaration><![CDATA[// Initialises the buffer including an I_TimeProvider for timestamping buffers and events.
+METHOD PUBLIC Initialise
+VAR_INPUT
+	timeProvider : I_TimeProvider;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_timeProvider := timeProvider;
+
+IF _timeProvider = NULL THEN
+  F_LogWarning(CONCAT(InstanceName, ': Unable to Initialise. _timeProvider is uninitialised.'));
+  RETURN;
+END_IF
+
+isInitialised := TRUE;
+
+currentDateTime := task.DateString;
+csvFileWriter.SetFileOpenMode(TRUE);
+csvFileWriter.SetFileParams(F_Concat3(EventsConfig.CSV_LOG_FILE_PATH, F_Concat3(EventsConfig.CSV_LOG_FILE_NAME, '_', currentDateTime), '.csv'), ASCI_COMMA);
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
